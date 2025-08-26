@@ -45,6 +45,7 @@ public class SecurityConfig {
                     authorizeHttp
                             .requestMatchers("/v1/user/**").permitAll()
                             .requestMatchers("/v2/**").hasRole("ADMIN")
+                            .requestMatchers("/auth/google/callback").permitAll()
                             .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
