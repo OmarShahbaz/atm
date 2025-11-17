@@ -7,6 +7,7 @@ import com.atm.dto.UserSignupRequest;
 import com.atm.dto.UserSignupResponse;
 import com.atm.exception.InvalidUsernamePasswordException;
 import com.atm.exception.PasswordMissMatchException;
+import com.atm.jwt.JwtService;
 import com.atm.model.User;
 import com.atm.repository.UserRepository;
 import com.atm.service.UserService;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +28,16 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager){
+    public UserServiceImpl(UserRepository userRepository,
+                           PasswordEncoder passwordEncoder,
+                           AuthenticationManager authenticationManager,
+                           JwtService jwtService){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
     }
     @Override
     public UserSignupResponse signup(UserSignupRequest signupRequest) {
@@ -66,13 +73,15 @@ public class UserServiceImpl implements UserService {
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
         try{
-            authenticationManager.authenticate(
+            Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
             log.info("User authenticated: {}!",loginRequest.getEmail());
             LoginResponse loginResponse = new LoginResponse();
-            loginResponse.setMessage("Login Successful!");
+            if(authentication.isAuthenticated()){
+                loginResponse.setMessage("Login Successful!");
+                loginResponse.setToken(jwtService.generateToken(loginRequest.getEmail()));
+            }
             return loginResponse;
-
         }catch (BadCredentialsException ae){
             log.error("User not authenticated: {}!",loginRequest.getEmail());
             throw new InvalidUsernamePasswordException("Bad Credentials!", loginRequest.getEmail());
